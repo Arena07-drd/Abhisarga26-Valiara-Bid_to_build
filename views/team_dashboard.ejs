@@ -1,0 +1,123 @@
+<%- include('layout/header') %>
+
+<div class="row align-items-center mb-5">
+  <div class="col-md-8">
+    <h1 class="fw-bold tracking-tight display-5 text-gray-900">Welcome, <%= team.team_name %>!</h1>
+    <p class="text-secondary fs-5 mt-2">Manage your portfolio, track your purse, and prepare for allocation.</p>
+  </div>
+  <div class="col-md-4 text-md-end mt-3 mt-md-0">
+    <div class="card bg-dark text-white shadow-lg border-0 rounded-4">
+      <div class="card-body p-4">
+        <h6 class="text-uppercase text-gray-400 fw-bold mb-1">Remaining Purse</h6>
+        <h2 class="fw-bold mb-0 text-success">$<%= team.purse_remaining.toLocaleString() %></h2>
+      </div>
+    </div>
+  </div>
+</div>
+
+<span id="poller-meta-phase" data-val="<%= currentPhase %>" class="d-none"></span>
+<span id="poller-meta-live" data-val="<%= live_company_id || '' %>" class="d-none"></span>
+
+<% if (liveCompany) { %>
+  <div class="row mb-5">
+    <div class="col-12">
+      <div class="card shadow-lg border-0 rounded-4" style="background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%); color: white;">
+        <div class="card-body p-5">
+          <div class="d-flex justify-content-between align-items-center mb-3">
+            <h5 class="fw-bold text-uppercase tracking-wider mb-0 text-white-50"><i class="bi bi-broadcast me-2"></i>Live on Auction Block</h5>
+            <span class="badge bg-danger pulse-animation py-2 px-3 rounded-pill fs-6"><i class="bi bi-record-circle-fill me-2"></i>LIVE</span>
+          </div>
+          <h1 class="display-3 fw-bold mb-3"><%= liveCompany.name %></h1>
+          <p class="fs-4 mb-4" style="max-width: 800px;"><%= liveCompany.description || 'No description available for this company.' %></p>
+          <% if (liveCompany.pdf_url) { %>
+            <a href="<%= liveCompany.pdf_url %>" target="_blank" class="btn btn-light btn-lg rounded-pill fw-bold text-success px-5 shadow-sm">
+              <i class="bi bi-file-earmark-pdf-fill me-2"></i>View Prospectus
+            </a>
+          <% } %>
+        </div>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<div class="row g-4 mt-2">
+  <div class="col-12">
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h3 class="fw-bold">Your Owned Companies</h3>
+      <span class="badge bg-primary fs-6 py-2 px-3 rounded-pill shadow-sm">Phase: <span class="text-uppercase fw-bold"><%= currentPhase %></span></span>
+    </div>
+    
+    <% if (ownedCompanies.length === 0) { %>
+      <div class="alert alert-light text-center py-5 shadow-sm rounded-4 border-0">
+        <h4 class="text-muted fw-semibold">You don't own any companies yet.</h4>
+        <p class="text-muted mb-0">Wait for the admin to assign you companies during the live auction.</p>
+      </div>
+    <% } else { %>
+      <div class="row row-cols-1 row-cols-md-2 row-cols-lg-3 g-4">
+        <% ownedCompanies.forEach(company => { %>
+          <div class="col">
+            <div class="card h-100 shadow-sm border-0 rounded-4 hover-shadow transition-all">
+              <div class="card-body p-4">
+                <h4 class="card-title fw-bold mb-3"><%= company.name %></h4>
+                <p class="card-text text-muted small mb-4" style="min-height: 40px;"><%= company.description || 'No description provided.' %></p>
+                <div class="d-flex justify-content-between align-items-center mb-3">
+                  <span class="text-sm fw-semibold text-gray-500">Winning Bid</span>
+                  <span class="fw-bold text-success fs-5">$<%= company.bid_amount.toLocaleString() %></span>
+                </div>
+                
+                <% if (company.pdf_url) { %>
+                  <a href="<%= company.pdf_url %>" target="_blank" class="btn btn-outline-primary w-100 rounded-pill fw-semibold border-2">
+                    <i class="bi bi-file-earmark-pdf-fill me-2"></i>View Prospectus
+                  </a>
+                <% } %>
+              </div>
+            </div>
+          </div>
+        <% }) %>
+      </div>
+    <% } %>
+  </div>
+</div>
+
+<% if (currentPhase === 'allocation') { %>
+  <div class="row mt-5">
+    <div class="col-12 text-center">
+      <div class="card bg-warning text-dark border-0 rounded-4 shadow-sm">
+        <div class="card-body py-4">
+          <h4 class="fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Allocation Phase is LIVE</h4>
+          <p class="fs-5 mb-4">You must allocate your remaining purse across your owned companies.</p>
+          <a href="/team/allocate" class="btn btn-dark btn-lg rounded-pill px-5 fw-bold shadow">Go to Allocation Panel</a>
+        </div>
+      </div>
+    </div>
+  </div>
+<% } %>
+
+<style>
+  .transition-all { transition: all 0.3s ease; }
+  .hover-shadow:hover { transform: translateY(-5px); box-shadow: 0 10px 20px rgba(0,0,0,0.1) !important; }
+</style>
+
+<script>
+  setInterval(async () => {
+    try {
+      const response = await fetch('/api/team-status');
+      if (response.ok) {
+        const data = await response.json();
+        
+        const phaseSpan = document.getElementById('poller-meta-phase');
+        const liveSpan = document.getElementById('poller-meta-live');
+        
+        const currentPhase = phaseSpan ? phaseSpan.getAttribute('data-val').toLowerCase() : '';
+        const currentLive = liveSpan ? liveSpan.getAttribute('data-val') : '';
+
+        // If phase changed, or live company changed, reload!
+        if (currentPhase !== data.phase || currentLive !== String(data.live_company_id || '')) {
+          window.location.reload(); 
+        }
+      }
+    } catch(err) { console.error('Polling error', err); }
+  }, 5000);
+</script>
+
+<%- include('layout/footer') %>
