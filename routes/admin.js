@@ -191,4 +191,72 @@ router.post('/calculate-scores', catchAsync(async (req, res) => {
   res.redirect('/leaderboard');
 }));
 
+// POST /admin/delete-team
+router.post('/delete-team', catchAsync(async (req, res) => {
+  const { team_id } = req.body;
+  const db = await getDb();
+  await db.exec('BEGIN TRANSACTION');
+  try {
+    const team = await db.get('SELECT * FROM teams WHERE id = ?', [team_id]);
+    if (team) {
+      await db.run('DELETE FROM bids WHERE team_id = ?', [team_id]);
+      await db.run('DELETE FROM allocations WHERE team_id = ?', [team_id]);
+      await db.run('DELETE FROM scores WHERE team_id = ?', [team_id]);
+      await db.run('DELETE FROM teams WHERE id = ?', [team_id]);
+      await db.run('DELETE FROM users WHERE id = ?', [team.user_id]);
+    }
+    await db.exec('COMMIT');
+    req.session.successMsg = 'Team deleted completely.';
+  } catch (err) {
+    await db.exec('ROLLBACK');
+    req.session.errorMsg = 'Error deleting team.';
+  }
+  res.redirect('/admin/dashboard');
+}));
+
+// POST /admin/delete-company
+router.post('/delete-company', catchAsync(async (req, res) => {
+  const { company_id } = req.body;
+  const db = await getDb();
+  await db.exec('BEGIN TRANSACTION');
+  try {
+    const bids = await db.all('SELECT * FROM bids WHERE company_id = ?', [company_id]);
+    for (let bid of bids) {
+      await db.run('UPDATE teams SET purse_remaining = purse_remaining + ? WHERE id = ?', [bid.bid_amount, bid.team_id]);
+    }
+    await db.run('DELETE FROM bids WHERE company_id = ?', [company_id]);
+    await db.run('DELETE FROM allocations WHERE company_id = ?', [company_id]);
+    await db.run('UPDATE system_control SET live_company_id = NULL WHERE live_company_id = ?', [company_id]);
+    await db.run('DELETE FROM company_results WHERE company_id = ?', [company_id]);
+    await db.run('DELETE FROM companies WHERE id = ?', [company_id]);
+    await db.exec('COMMIT');
+    req.session.successMsg = 'Company deleted successfully.';
+  } catch (err) {
+    await db.exec('ROLLBACK');
+    req.session.errorMsg = 'Error deleting company.';
+  }
+  res.redirect('/admin/dashboard');
+}));
+
+// POST /admin/revoke-bid
+router.post('/revoke-bid', catchAsync(async (req, res) => {
+  const { bid_id } = req.body;
+  const db = await getDb();
+  await db.exec('BEGIN TRANSACTION');
+  try {
+    const bid = await db.get('SELECT * FROM bids WHERE id = ?', [bid_id]);
+    if (bid) {
+      await db.run('UPDATE teams SET purse_remaining = purse_remaining + ? WHERE id = ?', [bid.bid_amount, bid.team_id]);
+      await db.run('DELETE FROM allocations WHERE team_id = ? AND company_id = ?', [bid.team_id, bid.company_id]);
+      await db.run('DELETE FROM bids WHERE id = ?', [bid_id]);
+    }
+    await db.exec('COMMIT');
+    req.session.successMsg = 'Bid revoked successfully. Funds returned to team.';
+  } catch (err) {
+    await db.exec('ROLLBACK');
+    req.session.errorMsg = 'Error revoking bid.';
+  }
+  res.redirect('/admin/dashboard');
+}));
+
 module.exports = router;

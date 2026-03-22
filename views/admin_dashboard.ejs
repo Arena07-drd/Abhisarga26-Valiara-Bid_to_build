@@ -182,6 +182,7 @@
             <th>Winning Team</th>
             <th>Bid Amount</th>
             <th>Time</th>
+            <th>Actions</th>
           </tr>
         </thead>
         <tbody>
@@ -194,11 +195,60 @@
                 <td><span class="badge bg-secondary"><%= bid.team_name %></span></td>
                 <td class="text-success fw-bold">$<%= bid.bid_amount.toLocaleString() %></td>
                 <td class="text-muted text-sm"><%= new Date(bid.assigned_at).toLocaleString() %></td>
+                <td>
+                  <form action="/admin/revoke-bid" method="POST" class="m-0" onsubmit="return confirm('Are you sure you want to revoke this bid/assignment?');">
+                    <input type="hidden" name="bid_id" value="<%= bid.id %>">
+                    <button type="submit" class="btn btn-sm btn-outline-danger shadow-sm rounded-pill fw-bold">Revoke</button>
+                  </form>
+                </td>
               </tr>
             <% }) %>
           <% } %>
         </tbody>
       </table>
+    </div>
+  </div>
+</div>
+
+<div class="row g-4 mt-5">
+  <div class="col-12"><h4 class="fw-bold text-danger border-bottom border-danger pb-2">Danger Zone (Entity Deletion)</h4></div>
+  <!-- Delete Team -->
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-danger border-opacity-50 h-100 rounded-4 bg-danger bg-opacity-10">
+      <div class="card-body p-4">
+        <h4 class="fw-bold mb-4 text-danger"><i class="bi bi-exclamation-triangle-fill me-2"></i>Delete Team</h4>
+        <form action="/admin/delete-team" method="POST" onsubmit="return confirm('WARNING: This will delete the team, their user account, all their bids, and their scores permanently! Are you absolutely sure?');">
+          <div class="mb-3">
+            <select name="team_id" class="form-select rounded-3 border-danger" required>
+              <option value="">Select Team to Delete</option>
+              <% teams.forEach(team => { %>
+                <option value="<%= team.id %>"><%= team.team_name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-danger w-100 rounded-3 fw-bold shadow-sm py-2">Permanently Delete Team</button>
+        </form>
+      </div>
+    </div>
+  </div>
+
+  <!-- Delete Company -->
+  <div class="col-lg-6">
+    <div class="card shadow-sm border-danger border-opacity-50 h-100 rounded-4 bg-danger bg-opacity-10">
+      <div class="card-body p-4">
+        <h4 class="fw-bold mb-4 text-danger"><i class="bi bi-trash-fill me-2"></i>Delete Company</h4>
+        <form action="/admin/delete-company" method="POST" onsubmit="return confirm('WARNING: This will delete the company, any bids placed on it, and results permanently! Are you absolutely sure?');">
+          <div class="mb-3">
+            <select name="company_id" class="form-select rounded-3 border-danger" required>
+              <option value="">Select Company to Delete</option>
+              <% companies.forEach(company => { %>
+                <option value="<%= company.id %>"><%= company.name %></option>
+              <% }) %>
+            </select>
+          </div>
+          <button type="submit" class="btn btn-danger w-100 rounded-3 fw-bold shadow-sm py-2">Permanently Delete Company</button>
+        </form>
+      </div>
     </div>
   </div>
 </div>
