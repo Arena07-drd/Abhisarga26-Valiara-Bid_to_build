@@ -37,6 +37,14 @@ async function initDb() {
     console.error("Schema execution error", err);
   }
 
+  // Migrate phase constraint: allocation → trading for existing DBs
+  try {
+    await db.run("ALTER TABLE system_control DROP CONSTRAINT IF EXISTS system_control_current_phase_check");
+    await db.run("ALTER TABLE system_control ADD CONSTRAINT system_control_current_phase_check CHECK (current_phase IN ('auction', 'trading', 'closed'))");
+    // If any row still says 'allocation', update it to 'trading'
+    await db.run("UPDATE system_control SET current_phase = 'trading' WHERE current_phase = 'allocation'");
+  } catch (err) {}
+
   try {
     await db.run("ALTER TABLE system_control ADD COLUMN live_company_id INTEGER REFERENCES companies(id)");
   } catch (err) {}
@@ -44,6 +52,18 @@ async function initDb() {
   try { await db.run("ALTER TABLE system_control ADD COLUMN default_allocation_purse REAL DEFAULT 2000000.0"); } catch (err) {}
   try { await db.run("ALTER TABLE teams ADD COLUMN allocation_purse REAL DEFAULT 0.0"); } catch (err) {}
   try { await db.run("ALTER TABLE companies ADD COLUMN pdf_url TEXT"); } catch (err) {}
+
+  // Ensure activity_logs table exists
+  try {
+    await db.run(`CREATE TABLE IF NOT EXISTS activity_logs (
+      id SERIAL PRIMARY KEY,
+      timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+      actor TEXT NOT NULL,
+      action TEXT NOT NULL,
+      details TEXT,
+      purse_snapshot TEXT
+    )`);
+  } catch (err) {}
   
   // Clean up legacy tables just in case they are clogging DB visually
   try { await db.run("DROP TABLE IF EXISTS company_results"); } catch (err) {}
@@ -77,8 +97,21 @@ async function initDb() {
   }
 }
 
+async function logActivity(actor, action, details, purseSnapshot) {
+  try {
+    const db = await getDb();
+    await db.run(
+      'INSERT INTO activity_logs (actor, action, details, purse_snapshot) VALUES ($1, $2, $3, $4)',
+      [actor, action, details || '', purseSnapshot || '']
+    );
+  } catch (e) {
+    console.error('LOG ERROR:', e.message);
+  }
+}
+
 module.exports = {
   getDb,
   initDb,
-  pool
+  pool,
+  logActivity
 };

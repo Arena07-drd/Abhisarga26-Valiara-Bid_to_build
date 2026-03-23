@@ -24,7 +24,7 @@
           <select name="phase" class="form-select mb-3 rounded-3" required>
             <option value="closed" <%= systemControl.current_phase === 'closed' ? 'selected' : '' %>>Closed</option>
             <option value="auction" <%= systemControl.current_phase === 'auction' ? 'selected' : '' %>>Auction</option>
-            <option value="allocation" <%= systemControl.current_phase === 'allocation' ? 'selected' : '' %>>Allocation</option>
+            <option value="trading" <%= systemControl.current_phase === 'trading' ? 'selected' : '' %>>Trading</option>
           </select>
           <button type="submit" class="btn btn-warning w-100 rounded-3 fw-semibold">Update Phase</button>
         </form>

@@ -2,7 +2,7 @@ const express = require('express');
 const router = express.Router();
 const multer = require('multer');
 const path = require('path');
-const { getDb } = require('../db');
+const { getDb, logActivity } = require('../db');
 
 // Error wrapper
 const catchAsync = fn => (req, res, next) => fn(req, res, next).catch(next);
@@ -68,6 +68,7 @@ router.post('/create-user', catchAsync(async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, 10);
     await db.run('INSERT INTO users (username, password, role) VALUES ($1, $2, $3)', [username, hash, 'team']);
+    await logActivity('ADMIN', 'CREATE_USER', `Created team user "${username}"`);
     req.session.successMsg = `Team User '${username}' created successfully.`;
   } catch(err) {
     req.session.errorMsg = 'Error creating user. Username might already exist.';
@@ -90,6 +91,7 @@ router.post('/add-company', upload.single('pdf_doc'), catchAsync(async (req, res
     }
     
     await db.run('INSERT INTO companies (name, description, pdf_url) VALUES ($1, $2, $3)', [name, description || null, pdf_url]);
+    await logActivity('ADMIN', 'ADD_COMPANY', `Added company "${name}"`);
     req.session.successMsg = `Company "${name}" added successfully!`;
   } catch (err) {
     console.error("ADD COMPANY FULL ERROR:", err);
@@ -123,6 +125,9 @@ router.post('/assign-bid', catchAsync(async (req, res) => {
     await db.run('INSERT INTO bids (team_id, company_id, bid_amount) VALUES ($1, $2, $3)', [team_id, company_id, amount]);
     await db.run('UPDATE teams SET purse_remaining = purse_remaining - $1 WHERE id = $2', [amount, team_id]);
     await db.exec('COMMIT');
+    const updatedTeam = await db.get('SELECT team_name, purse_remaining, allocation_purse FROM teams WHERE id = $1', [team_id]);
+    const companyName = (await db.get('SELECT name FROM companies WHERE id = $1', [company_id])).name;
+    await logActivity('ADMIN', 'ASSIGN_BID', `Assigned "${companyName}" to "${updatedTeam.team_name}" for $${amount}`, `Team "${updatedTeam.team_name}": Bidding=$${updatedTeam.purse_remaining}, Trading=$${updatedTeam.allocation_purse}`);
     req.session.successMsg = 'Bid assigned successfully.';
   } catch (err) {
     await db.exec('ROLLBACK');
@@ -138,12 +143,16 @@ router.post('/set-phase', catchAsync(async (req, res) => {
   const db = await getDb();
   
   const sys = await db.get('SELECT current_phase, default_allocation_purse FROM system_control LIMIT 1');
-  if (sys && sys.current_phase === 'auction' && phase === 'allocation') {
+  if (sys && sys.current_phase === 'auction' && phase === 'trading') {
     // allocation_purse = leftover bidding money + the global default allocation purse
     const defaultAlloc = sys.default_allocation_purse || 0;
     await db.run('UPDATE teams SET allocation_purse = purse_remaining + $1, purse_remaining = 0', [defaultAlloc]);
-    req.session.successMsg = `Phase changed to ${phase}. Each team's allocation purse = leftover bid funds + $${defaultAlloc.toLocaleString()} default.`;
+    const allTeams = await db.all('SELECT team_name, purse_remaining, allocation_purse FROM teams');
+    const snapshot = allTeams.map(t => `${t.team_name}: Bid=$${t.purse_remaining}, Trade=$${t.allocation_purse}`).join(' | ');
+    await logActivity('ADMIN', 'PHASE_CHANGE', `Phase: auction → trading. Rollover applied. Default alloc=$${defaultAlloc}`, snapshot);
+    req.session.successMsg = `Phase changed to ${phase}. Each team's trading purse = leftover bid funds + $${defaultAlloc.toLocaleString()} default.`;
   } else {
+    await logActivity('ADMIN', 'PHASE_CHANGE', `Phase changed to "${phase}"`);
     req.session.successMsg = `Phase changed to ${phase}.`;
   }
 
@@ -159,10 +168,10 @@ router.post('/update-default-purses', catchAsync(async (req, res) => {
   const ap = parseFloat(allocation_purse);
   
   await db.run('UPDATE system_control SET default_bidding_purse = $1, default_allocation_purse = $2', [bp, ap]);
-  
-  // Retroactively apply the new default to all existing teams so the Admin sees immediate reflection
   await db.run('UPDATE teams SET purse_remaining = $1, allocation_purse = $2', [bp, ap]);
-  
+  const allTeams = await db.all('SELECT team_name, purse_remaining, allocation_purse FROM teams');
+  const snapshot = allTeams.map(t => `${t.team_name}: Bid=$${t.purse_remaining}, Trade=$${t.allocation_purse}`).join(' | ');
+  await logActivity('ADMIN', 'UPDATE_DEFAULT_PURSES', `Global defaults set: Bidding=$${bp}, Trading=$${ap}. All teams reset.`, snapshot);
   req.session.successMsg = 'Global default purses updated successfully and all existing teams were securely reset to these values.';
   res.redirect('/admin/dashboard');
 }));
@@ -172,6 +181,8 @@ router.post('/update-team-purse', catchAsync(async (req, res) => {
   const { team_id, bidding_purse, allocation_purse } = req.body;
   const db = await getDb();
   await db.run('UPDATE teams SET purse_remaining = $1, allocation_purse = $2 WHERE id = $3', [parseFloat(bidding_purse), parseFloat(allocation_purse), parseInt(team_id)]);
+  const t = await db.get('SELECT team_name, purse_remaining, allocation_purse FROM teams WHERE id = $1', [parseInt(team_id)]);
+  await logActivity('ADMIN', 'UPDATE_TEAM_PURSE', `Overrode purses for "${t.team_name}": Bid=$${t.purse_remaining}, Trade=$${t.allocation_purse}`, `${t.team_name}: Bid=$${t.purse_remaining}, Trade=$${t.allocation_purse}`);
   req.session.successMsg = 'Team purses updated successfully.';
   res.redirect('/admin/dashboard');
 }));
@@ -183,8 +194,11 @@ router.post('/set-live-company', catchAsync(async (req, res) => {
   if (company_id === 'none') {
     await db.run('UPDATE system_control SET live_company_id = NULL');
     req.session.successMsg = 'Cleared live company broadcast.';
+    await logActivity('ADMIN', 'SET_LIVE_COMPANY', 'Cleared live company broadcast');
   } else {
     await db.run('UPDATE system_control SET live_company_id = $1', [company_id]);
+    const c = await db.get('SELECT name FROM companies WHERE id = $1', [company_id]);
+    await logActivity('ADMIN', 'SET_LIVE_COMPANY', `Live company set to "${c ? c.name : company_id}"`);
     req.session.successMsg = 'Live company broadcast updated!';
   }
   res.redirect('/admin/dashboard');
@@ -207,6 +221,7 @@ router.post('/delete-team', catchAsync(async (req, res) => {
       await db.run('DELETE FROM users WHERE id = $1', [team.user_id]);
     }
     await db.exec('COMMIT');
+    await logActivity('ADMIN', 'DELETE_TEAM', `Deleted team ID=${team_id} and their user/bids/allocations`);
     req.session.successMsg = 'Team deleted completely.';
   } catch (err) {
     await db.exec('ROLLBACK');
@@ -231,6 +246,7 @@ router.post('/delete-company', catchAsync(async (req, res) => {
     await db.run('DELETE FROM company_results WHERE company_id = $1', [company_id]);
     await db.run('DELETE FROM companies WHERE id = $1', [company_id]);
     await db.exec('COMMIT');
+    await logActivity('ADMIN', 'DELETE_COMPANY', `Deleted company ID=${company_id}. Refunded bids to teams.`);
     req.session.successMsg = 'Company deleted successfully.';
   } catch (err) {
     await db.exec('ROLLBACK');
@@ -252,6 +268,7 @@ router.post('/revoke-bid', catchAsync(async (req, res) => {
       await db.run('DELETE FROM bids WHERE id = $1', [bid_id]);
     }
     await db.exec('COMMIT');
+    await logActivity('ADMIN', 'REVOKE_BID', `Revoked bid ID=${bid_id}. $${bid.bid_amount} refunded to team ID=${bid.team_id}`);
     req.session.successMsg = 'Bid revoked successfully. Funds returned to team.';
   } catch (err) {
     await db.exec('ROLLBACK');
@@ -271,12 +288,42 @@ router.post('/reset-all-data', catchAsync(async (req, res) => {
     await db.run('DELETE FROM companies');
     await db.run("DELETE FROM users WHERE role != 'admin'");
     await db.run("UPDATE system_control SET current_phase = 'closed', live_company_id = NULL");
+    await logActivity('ADMIN', 'RESET_ALL_DATA', 'NUCLEAR RESET: All teams, companies, bids, allocations, trades wiped.');
     req.session.successMsg = 'All data wiped successfully! Only admin account preserved.';
   } catch (err) {
     console.error("RESET ERROR:", err);
     req.session.errorMsg = 'Error resetting data: ' + err.message;
   }
   res.redirect('/admin/dashboard');
+}));
+
+// GET /admin/logs
+router.get('/logs', catchAsync(async (req, res) => {
+  const db = await getDb();
+  const { action, actor } = req.query;
+  
+  let sql = 'SELECT * FROM activity_logs WHERE 1=1';
+  const params = [];
+  let paramIdx = 1;
+  
+  if (action) {
+    sql += ` AND action = $${paramIdx++}`;
+    params.push(action);
+  }
+  if (actor) {
+    sql += ` AND actor ILIKE $${paramIdx++}`;
+    params.push(`%${actor}%`);
+  }
+  
+  sql += ' ORDER BY timestamp DESC LIMIT 500';
+  
+  const logs = await db.all(sql, params);
+  
+  res.render('admin_logs', {
+    logs,
+    filter_action: action || '',
+    filter_actor: actor || ''
+  });
 }));
 
 module.exports = router;

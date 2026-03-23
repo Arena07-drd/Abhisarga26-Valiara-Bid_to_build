@@ -29,7 +29,7 @@ CREATE TABLE IF NOT EXISTS bids (
   company_id INTEGER NOT NULL REFERENCES companies(id),
   bid_amount REAL NOT NULL,
   assigned_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  UNIQUE(company_id) -- A company can only be bought by one team
+  UNIQUE(company_id)
 );
 
 CREATE TABLE IF NOT EXISTS allocations (
@@ -37,7 +37,7 @@ CREATE TABLE IF NOT EXISTS allocations (
   team_id INTEGER NOT NULL REFERENCES teams(id),
   company_id INTEGER NOT NULL REFERENCES companies(id),
   allocated_amount REAL NOT NULL,
-  UNIQUE(team_id, company_id) -- A team can only allocate once per company
+  UNIQUE(team_id, company_id)
 );
 
 CREATE TABLE IF NOT EXISTS trades (
@@ -50,9 +50,19 @@ CREATE TABLE IF NOT EXISTS trades (
   status TEXT DEFAULT 'pending' CHECK(status IN ('pending', 'accepted', 'rejected')),
   created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
+
+CREATE TABLE IF NOT EXISTS activity_logs (
+  id SERIAL PRIMARY KEY,
+  timestamp TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  actor TEXT NOT NULL,
+  action TEXT NOT NULL,
+  details TEXT,
+  purse_snapshot TEXT
+);
+
 CREATE TABLE IF NOT EXISTS system_control (
   id INTEGER PRIMARY KEY CHECK (id = 1),
-  current_phase TEXT DEFAULT 'closed' CHECK(current_phase IN ('auction', 'allocation', 'closed')),
+  current_phase TEXT DEFAULT 'closed' CHECK(current_phase IN ('auction', 'trading', 'closed')),
   live_company_id INTEGER REFERENCES companies(id),
   default_bidding_purse REAL DEFAULT 1000000.0,
   default_allocation_purse REAL DEFAULT 2000000.0

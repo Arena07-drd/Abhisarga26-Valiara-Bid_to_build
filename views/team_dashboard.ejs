@@ -8,8 +8,8 @@
   <div class="col-md-4 text-md-end mt-3 mt-md-0">
     <div class="card bg-dark text-white shadow-lg border-0 rounded-4">
       <div class="card-body p-4">
-        <h6 class="text-uppercase text-gray-400 fw-bold mb-1"><%= currentPhase === 'allocation' ? 'Allocatable Purse' : 'Bidding Purse' %></h6>
-        <h2 class="fw-bold mb-0 text-success">$<%= currentPhase === 'allocation' ? (team.allocation_purse||0).toLocaleString() : team.purse_remaining.toLocaleString() %></h2>
+        <h6 class="text-uppercase text-gray-400 fw-bold mb-1"><%= currentPhase === 'trading' ? 'Trading Purse' : 'Bidding Purse' %></h6>
+        <h2 class="fw-bold mb-0 text-success">$<%= currentPhase === 'trading' ? (team.allocation_purse||0).toLocaleString() : team.purse_remaining.toLocaleString() %></h2>
       </div>
     </div>
   </div>
@@ -79,14 +79,13 @@
   </div>
 </div>
 
-<% if (currentPhase === 'allocation') { %>
+<% if (currentPhase === 'trading') { %>
   <div class="row mt-5">
     <div class="col-12 text-center mb-4">
       <div class="card bg-warning text-dark border-0 rounded-4 shadow-sm">
         <div class="card-body py-4">
-          <h4 class="fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Allocation Phase is LIVE</h4>
-          <p class="fs-5 mb-4">You must allocate your remaining purse across your owned companies.</p>
-          <a href="/team/allocate" class="btn btn-dark btn-lg rounded-pill px-5 fw-bold shadow">Go to Allocation Panel</a>
+          <h4 class="fw-bold"><i class="bi bi-exclamation-triangle-fill me-2"></i>Trading Phase is LIVE</h4>
+          <p class="fs-5 mb-4">You can now trade companies with other teams using cash or company swaps.</p>
         </div>
       </div>
     </div>
