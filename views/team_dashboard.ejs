@@ -17,6 +17,8 @@
 
 <span id="poller-meta-phase" data-val="<%= currentPhase %>" class="d-none"></span>
 <span id="poller-meta-live" data-val="<%= live_company_id || '' %>" class="d-none"></span>
+<span id="poller-meta-purse" data-val="<%= team.purse_remaining %>" class="d-none"></span>
+<span id="poller-meta-companies-count" data-val="<%= ownedCompanies.length %>" class="d-none"></span>
 
 <% if (liveCompany) { %>
   <div class="row mb-5">
@@ -213,12 +215,19 @@
         
         const phaseSpan = document.getElementById('poller-meta-phase');
         const liveSpan = document.getElementById('poller-meta-live');
+        const purseSpan = document.getElementById('poller-meta-purse');
+        const companiesCountSpan = document.getElementById('poller-meta-companies-count');
         
         const currentPhase = phaseSpan ? phaseSpan.getAttribute('data-val').toLowerCase() : '';
         const currentLive = liveSpan ? liveSpan.getAttribute('data-val') : '';
+        const currentPurse = purseSpan ? Number(purseSpan.getAttribute('data-val')) : 0;
+        const currentCompaniesCount = companiesCountSpan ? Number(companiesCountSpan.getAttribute('data-val')) : 0;
 
-        // If phase changed, or live company changed, reload!
-        if (currentPhase !== data.phase || currentLive !== String(data.live_company_id || '')) {
+        // If phase changed, or live company changed, or purse changed, or companies owned changed -> reload!
+        if (currentPhase !== data.phase || 
+            currentLive !== String(data.live_company_id || '') || 
+            currentPurse !== data.purse ||
+            currentCompaniesCount !== (data.companies ? data.companies.length : 0)) {
           window.location.reload(); 
         }
       }
