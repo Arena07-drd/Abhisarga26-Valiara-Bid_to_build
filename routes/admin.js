@@ -137,11 +137,12 @@ router.post('/set-phase', catchAsync(async (req, res) => {
   const { phase } = req.body;
   const db = await getDb();
   
-  const sys = await db.get('SELECT current_phase FROM system_control LIMIT 1');
+  const sys = await db.get('SELECT current_phase, default_allocation_purse FROM system_control LIMIT 1');
   if (sys && sys.current_phase === 'auction' && phase === 'allocation') {
-    // Rollover cash upon transition
-    await db.run('UPDATE teams SET allocation_purse = allocation_purse + purse_remaining, purse_remaining = 0');
-    req.session.successMsg = `Phase changed to ${phase}. Unspent bidding funds rolled over to allocation purses.`;
+    // allocation_purse = leftover bidding money + the global default allocation purse
+    const defaultAlloc = sys.default_allocation_purse || 0;
+    await db.run('UPDATE teams SET allocation_purse = purse_remaining + $1, purse_remaining = 0', [defaultAlloc]);
+    req.session.successMsg = `Phase changed to ${phase}. Each team's allocation purse = leftover bid funds + $${defaultAlloc.toLocaleString()} default.`;
   } else {
     req.session.successMsg = `Phase changed to ${phase}.`;
   }
