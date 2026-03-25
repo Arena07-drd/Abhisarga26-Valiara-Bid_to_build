@@ -68,9 +68,19 @@ router.post('/create-user', catchAsync(async (req, res) => {
   try {
     const hash = await bcrypt.hash(password, 10);
     await db.run('INSERT INTO users (username, password, role) VALUES ($1, $2, $3)', [username, hash, 'team']);
-    await logActivity('ADMIN', 'CREATE_USER', `Created team user "${username}"`);
-    req.session.successMsg = `Team User '${username}' created successfully.`;
+    
+    // Immediately create the team entry too
+    const newUser = await db.get('SELECT id FROM users WHERE username = $1', [username]);
+    const sys = await db.get('SELECT default_bidding_purse, default_allocation_purse FROM system_control LIMIT 1');
+    const bPurse = sys ? sys.default_bidding_purse : 1000000;
+    const aPurse = sys ? sys.default_allocation_purse : 2000000;
+    const teamName = `${username}_team`;
+    await db.run('INSERT INTO teams (team_name, user_id, purse_remaining, allocation_purse) VALUES ($1, $2, $3, $4)', [teamName, newUser.id, bPurse, aPurse]);
+    
+    await logActivity('ADMIN', 'CREATE_USER', `Created team user "${username}" and team "${teamName}" with Bid=₹${bPurse} Cr., Trade=₹${aPurse} Cr.`);
+    req.session.successMsg = `Team User '${username}' and team '${teamName}' created successfully.`;
   } catch(err) {
+    console.error("CREATE USER ERROR:", err.message);
     req.session.errorMsg = 'Error creating user. Username might already exist.';
   }
   res.redirect('/admin/dashboard');
