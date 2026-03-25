@@ -127,7 +127,7 @@ router.post('/assign-bid', catchAsync(async (req, res) => {
     await db.exec('COMMIT');
     const updatedTeam = await db.get('SELECT team_name, purse_remaining, allocation_purse FROM teams WHERE id = $1', [team_id]);
     const companyName = (await db.get('SELECT name FROM companies WHERE id = $1', [company_id])).name;
-    await logActivity('ADMIN', 'ASSIGN_BID', `Assigned "${companyName}" to "${updatedTeam.team_name}" for $${amount}`, `Team "${updatedTeam.team_name}": Bidding=$${updatedTeam.purse_remaining}, Trading=$${updatedTeam.allocation_purse}`);
+    await logActivity('ADMIN', 'ASSIGN_BID', `Assigned "${companyName}" to "${updatedTeam.team_name}" for ₹${amount} Cr.`, `Team "${updatedTeam.team_name}": Bidding=₹${updatedTeam.purse_remaining} Cr., Trading=₹${updatedTeam.allocation_purse} Cr.`);
     req.session.successMsg = 'Bid assigned successfully.';
   } catch (err) {
     await db.exec('ROLLBACK');
@@ -148,9 +148,9 @@ router.post('/set-phase', catchAsync(async (req, res) => {
     const defaultAlloc = sys.default_allocation_purse || 0;
     await db.run('UPDATE teams SET allocation_purse = purse_remaining + $1, purse_remaining = 0', [defaultAlloc]);
     const allTeams = await db.all('SELECT team_name, purse_remaining, allocation_purse FROM teams');
-    const snapshot = allTeams.map(t => `${t.team_name}: Bid=$${t.purse_remaining}, Trade=$${t.allocation_purse}`).join(' | ');
-    await logActivity('ADMIN', 'PHASE_CHANGE', `Phase: auction → trading. Rollover applied. Default alloc=$${defaultAlloc}`, snapshot);
-    req.session.successMsg = `Phase changed to ${phase}. Each team's trading purse = leftover bid funds + $${defaultAlloc.toLocaleString()} default.`;
+    const snapshot = allTeams.map(t => `${t.team_name}: Bid=₹${t.purse_remaining} Cr., Trade=₹${t.allocation_purse} Cr.`).join(' | ');
+    await logActivity('ADMIN', 'PHASE_CHANGE', `Phase: auction → trading. Rollover applied. Default alloc=₹${defaultAlloc} Cr.`, snapshot);
+    req.session.successMsg = `Phase changed to ${phase}. Each team's trading purse = leftover bid funds + ₹${defaultAlloc.toLocaleString()} Cr. default.`;
   } else {
     await logActivity('ADMIN', 'PHASE_CHANGE', `Phase changed to "${phase}"`);
     req.session.successMsg = `Phase changed to ${phase}.`;
@@ -170,8 +170,8 @@ router.post('/update-default-purses', catchAsync(async (req, res) => {
   await db.run('UPDATE system_control SET default_bidding_purse = $1, default_allocation_purse = $2', [bp, ap]);
   await db.run('UPDATE teams SET purse_remaining = $1, allocation_purse = $2', [bp, ap]);
   const allTeams = await db.all('SELECT team_name, purse_remaining, allocation_purse FROM teams');
-  const snapshot = allTeams.map(t => `${t.team_name}: Bid=$${t.purse_remaining}, Trade=$${t.allocation_purse}`).join(' | ');
-  await logActivity('ADMIN', 'UPDATE_DEFAULT_PURSES', `Global defaults set: Bidding=$${bp}, Trading=$${ap}. All teams reset.`, snapshot);
+  const snapshot = allTeams.map(t => `${t.team_name}: Bid=₹${t.purse_remaining} Cr., Trade=₹${t.allocation_purse} Cr.`).join(' | ');
+  await logActivity('ADMIN', 'UPDATE_DEFAULT_PURSES', `Global defaults set: Bidding=₹${bp} Cr., Trading=₹${ap} Cr. All teams reset.`, snapshot);
   req.session.successMsg = 'Global default purses updated successfully and all existing teams were securely reset to these values.';
   res.redirect('/admin/dashboard');
 }));
@@ -182,7 +182,7 @@ router.post('/update-team-purse', catchAsync(async (req, res) => {
   const db = await getDb();
   await db.run('UPDATE teams SET purse_remaining = $1, allocation_purse = $2 WHERE id = $3', [parseFloat(bidding_purse), parseFloat(allocation_purse), parseInt(team_id)]);
   const t = await db.get('SELECT team_name, purse_remaining, allocation_purse FROM teams WHERE id = $1', [parseInt(team_id)]);
-  await logActivity('ADMIN', 'UPDATE_TEAM_PURSE', `Overrode purses for "${t.team_name}": Bid=$${t.purse_remaining}, Trade=$${t.allocation_purse}`, `${t.team_name}: Bid=$${t.purse_remaining}, Trade=$${t.allocation_purse}`);
+  await logActivity('ADMIN', 'UPDATE_TEAM_PURSE', `Overrode purses for "${t.team_name}": Bid=₹${t.purse_remaining} Cr., Trade=₹${t.allocation_purse} Cr.`, `${t.team_name}: Bid=₹${t.purse_remaining} Cr., Trade=₹${t.allocation_purse} Cr.`);
   req.session.successMsg = 'Team purses updated successfully.';
   res.redirect('/admin/dashboard');
 }));
@@ -268,7 +268,7 @@ router.post('/revoke-bid', catchAsync(async (req, res) => {
       await db.run('DELETE FROM bids WHERE id = $1', [bid_id]);
     }
     await db.exec('COMMIT');
-    await logActivity('ADMIN', 'REVOKE_BID', `Revoked bid ID=${bid_id}. $${bid.bid_amount} refunded to team ID=${bid.team_id}`);
+    await logActivity('ADMIN', 'REVOKE_BID', `Revoked bid ID=${bid_id}. ₹${bid.bid_amount} Cr. refunded to team ID=${bid.team_id}`);
     req.session.successMsg = 'Bid revoked successfully. Funds returned to team.';
   } catch (err) {
     await db.exec('ROLLBACK');

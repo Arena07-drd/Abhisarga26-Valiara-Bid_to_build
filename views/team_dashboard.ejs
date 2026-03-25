@@ -9,7 +9,7 @@
     <div class="card bg-dark text-white shadow-lg border-0 rounded-4">
       <div class="card-body p-4">
         <h6 class="text-uppercase text-gray-400 fw-bold mb-1"><%= currentPhase === 'trading' ? 'Trading Purse' : 'Bidding Purse' %></h6>
-        <h2 class="fw-bold mb-0 text-success">$<%= currentPhase === 'trading' ? (team.allocation_purse||0).toLocaleString() : team.purse_remaining.toLocaleString() %></h2>
+        <h2 class="fw-bold mb-0 text-success">₹<%= currentPhase === 'trading' ? (team.allocation_purse||0).toLocaleString() : team.purse_remaining.toLocaleString() %> Cr.</h2>
       </div>
     </div>
   </div>
@@ -64,7 +64,7 @@
                 <p class="card-text text-muted small mb-4" style="min-height: 40px;"><%= company.description || 'No description provided.' %></p>
                 <div class="d-flex justify-content-between align-items-center mb-3">
                   <span class="text-sm fw-semibold text-gray-500">Winning Bid</span>
-                  <span class="fw-bold text-success fs-5">$<%= company.bid_amount.toLocaleString() %></span>
+                  <span class="fw-bold text-success fs-5">₹<%= company.bid_amount.toLocaleString() %> Cr.</span>
                 </div>
                 
                 <% if (company.pdf_url) { %>
@@ -117,9 +117,9 @@
                   </select>
                 </div>
                 <div class="mb-3">
-                  <label class="form-label text-sm fw-semibold text-muted">Cash Offered (From Allocation Purse)</label>
+                  <label class="form-label text-sm fw-semibold text-muted">Cash Offered (From Trading Purse)</label>
                   <div class="input-group input-group-lg shadow-sm">
-                    <span class="input-group-text bg-light border-0 text-secondary fw-bold">$</span>
+                    <span class="input-group-text bg-light border-0 text-secondary fw-bold">₹</span>
                     <input type="number" step="0.01" name="offered_cash" class="form-control border-0 bg-light" value="0" min="0" max="<%= team.allocation_purse %>" required>
                   </div>
                 </div>
@@ -155,9 +155,9 @@
                           <span class="fw-semibold text-secondary">They Offer:</span> 
                           <span class="fw-bold text-success fs-5">
                             <% if (trade.offered_company_name) { %>
-                              <%= trade.offered_company_name %> + 
+                              <%= trade.offered_company_name %> <span class="text-muted fw-normal fs-6">(won for ₹<%= (trade.offered_company_bid_amount||0).toLocaleString() %> Cr.)</span> + 
                             <% } %>
-                            $<%= trade.offered_cash.toLocaleString() %>
+                            ₹<%= trade.offered_cash.toLocaleString() %> Cr.
                           </span>
                         </div>
                         <div class="d-flex flex-column gap-2 ms-3">
@@ -187,7 +187,7 @@
                     <div class="list-group-item bg-light text-muted rounded-4 border-0 mb-2 p-3">
                       <span class="badge bg-secondary mb-2 rounded-pill">To: <%= trade.target_name %></span><br>
                       Target: <span class="fw-bold text-dark"><%= trade.target_company_name %></span> | 
-                      Offer: <span class="fw-bold text-success"><%= trade.offered_company_name ? trade.offered_company_name + ' + ' : '' %>$<%= trade.offered_cash.toLocaleString() %></span>
+                      Offer: <span class="fw-bold text-success"><%= trade.offered_company_name ? trade.offered_company_name + ' + ' : '' %>₹<%= trade.offered_cash.toLocaleString() %> Cr.</span>
                     </div>
                   <% }) %>
                 </div>

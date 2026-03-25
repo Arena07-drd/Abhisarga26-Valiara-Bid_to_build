@@ -26,13 +26,13 @@
                 <div class="p-3 bg-light rounded-4 h-100">
                   <div class="text-sm text-muted fw-semibold text-uppercase mb-1">Bidded Assets</div>
                   <div class="fs-4 fw-bold text-primary"><%= team.bids.length %> Companies</div>
-                  <div class="text-xs text-muted mt-1">Total Spent: $<%= team.total_bidded.toLocaleString() %></div>
+                  <div class="text-xs text-muted mt-1">Total Spent: ₹<%= team.total_bidded.toLocaleString() %> Cr.</div>
                 </div>
               </div>
               <div class="col-6">
                 <div class="p-3 bg-light rounded-4 h-100">
                   <div class="text-sm text-muted fw-semibold text-uppercase mb-1">Allocated Funds</div>
-                  <div class="fs-4 fw-bold text-success">$<%= team.total_allocated.toLocaleString() %></div>
+                  <div class="fs-4 fw-bold text-success">₹<%= team.total_allocated.toLocaleString() %> Cr.</div>
                 </div>
               </div>
             </div>
@@ -49,10 +49,10 @@
                   <li class="list-group-item px-0 py-3 d-flex justify-content-between align-items-center">
                     <div>
                       <span class="fw-bold text-dark fs-5"><%= bid.company_name %></span>
-                      <div class="text-sm text-muted fw-semibold">Won for $<%= bid.bid_amount.toLocaleString() %></div>
+                      <div class="text-sm text-muted fw-semibold">Won for ₹<%= bid.bid_amount.toLocaleString() %> Cr.</div>
                     </div>
                     <% if (alloc) { %>
-                      <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-3 py-2 fs-6">Allocated: $<%= alloc.allocated_amount.toLocaleString() %></span>
+                      <span class="badge bg-success bg-opacity-10 text-success border border-success rounded-pill px-3 py-2 fs-6">Allocated: ₹<%= alloc.allocated_amount.toLocaleString() %> Cr.</span>
                     <% } else { %>
                       <span class="badge bg-warning bg-opacity-10 text-warning border border-warning rounded-pill px-3 py-2">Pending Allocation</span>
                     <% } %>

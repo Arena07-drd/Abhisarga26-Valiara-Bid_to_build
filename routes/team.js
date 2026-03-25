@@ -56,11 +56,13 @@ router.get('/dashboard', catchAsync(async (req, res) => {
       SELECT trades.*, 
         initiator.team_name as initiator_name,
         target_comp.name as target_company_name,
-        offered_comp.name as offered_company_name
+        offered_comp.name as offered_company_name,
+        offered_bid.bid_amount as offered_company_bid_amount
       FROM trades
       JOIN teams as initiator ON trades.initiator_team_id = initiator.id
       JOIN companies as target_comp ON trades.target_company_id = target_comp.id
       LEFT JOIN companies as offered_comp ON trades.offered_company_id = offered_comp.id
+      LEFT JOIN bids as offered_bid ON trades.offered_company_id = offered_bid.company_id
       WHERE trades.target_team_id = $1 AND trades.status = 'pending'
     `, [teamId]);
 
@@ -134,8 +136,8 @@ router.post('/propose-trade', catchAsync(async (req, res) => {
   const offeredComp = offCompId ? await db.get('SELECT name FROM companies WHERE id = $1', [offCompId]) : null;
   await logActivity(
     `TEAM:${myTeam.team_name}`, 'PROPOSE_TRADE',
-    `Proposed trade to "${targetTeam.team_name}": wants "${targetComp.name}", offers ${offeredComp ? '"' + offeredComp.name + '" + ' : ''}$${cash}`,
-    `${myTeam.team_name}: TradePurse=$${myTeam.allocation_purse}`
+    `Proposed trade to "${targetTeam.team_name}": wants "${targetComp.name}", offers ${offeredComp ? '"' + offeredComp.name + '" + ' : ''}₹${cash} Cr.`,
+    `${myTeam.team_name}: TradePurse=₹${myTeam.allocation_purse} Cr.`
   );
 
   req.session.successMsg = 'Trade proposal sent!';
@@ -198,8 +200,8 @@ router.post('/respond-trade', catchAsync(async (req, res) => {
       const initTeamPost = await db.get('SELECT team_name, allocation_purse FROM teams WHERE id = $1', [trade.initiator_team_id]);
       await logActivity(
         `TEAM:${acceptTeam.team_name}`, 'ACCEPT_TRADE',
-        `Accepted trade ID=${trade_id}. Companies swapped. Cash=$${trade.offered_cash} transferred.`,
-        `${acceptTeam.team_name}: TradePurse=$${acceptTeam.allocation_purse} | ${initTeamPost.team_name}: TradePurse=$${initTeamPost.allocation_purse}`
+        `Accepted trade ID=${trade_id}. Companies swapped. Cash=₹${trade.offered_cash} Cr. transferred.`,
+        `${acceptTeam.team_name}: TradePurse=₹${acceptTeam.allocation_purse} Cr. | ${initTeamPost.team_name}: TradePurse=₹${initTeamPost.allocation_purse} Cr.`
       );
     } catch (err) {
       await db.run('ROLLBACK');

@@ -91,7 +91,7 @@
             <label class="form-label fw-semibold text-dark">Assign to Team</label>
             <select name="team_id" class="form-select rounded-3" required>
               <% teams.forEach(team => { %>
-                <option value="<%= team.id %>"><%= team.team_name %> (Purse: $<%= team.purse_remaining.toLocaleString() %>)</option>
+                <option value="<%= team.id %>"><%= team.team_name %> (Purse: ₹<%= team.purse_remaining.toLocaleString() %> Cr.)</option>
               <% }) %>
             </select>
           </div>
@@ -104,7 +104,7 @@
             </select>
           </div>
           <div class="mb-4">
-            <label class="form-label fw-semibold text-dark">Winning Bid Amount ($)</label>
+            <label class="form-label fw-semibold text-dark">Winning Bid Amount (₹ Cr.)</label>
             <input type="number" step="0.01" name="bid_amount" class="form-control rounded-3 form-control-lg" placeholder="e.g. 150000" required>
           </div>
           <button type="submit" class="btn btn-success w-100 rounded-3 fw-bold fs-5 shadow-sm py-2">Assign Company</button>
@@ -139,7 +139,7 @@
           <select name="team_id" class="form-select mb-2 rounded-3" required>
             <option value="">Select Team to Override</option>
             <% teams.forEach(team => { %>
-              <option value="<%= team.id %>"><%= team.team_name %> (Bid: $<%= team.purse_remaining.toLocaleString() %> | Alloc: $<%= (team.allocation_purse||0).toLocaleString() %>)</option>
+              <option value="<%= team.id %>"><%= team.team_name %> (Bid: ₹<%= team.purse_remaining.toLocaleString() %> Cr. | Trade: ₹<%= (team.allocation_purse||0).toLocaleString() %> Cr.)</option>
             <% }) %>
           </select>
           <div class="row g-2 mb-3">
@@ -202,7 +202,7 @@
               <tr>
                 <td class="fw-semibold"><%= bid.company_name %></td>
                 <td><span class="badge bg-secondary"><%= bid.team_name %></span></td>
-                <td class="text-success fw-bold">$<%= bid.bid_amount.toLocaleString() %></td>
+                <td class="text-success fw-bold">₹<%= bid.bid_amount.toLocaleString() %> Cr.</td>
                 <td class="text-muted text-sm"><%= new Date(bid.assigned_at).toLocaleString() %></td>
                 <td>
                   <form action="/admin/revoke-bid" method="POST" class="m-0" onsubmit="return confirm('Are you sure you want to revoke this bid/assignment?');">
