@@ -224,9 +224,9 @@ router.post('/delete-team', catchAsync(async (req, res) => {
   try {
     const team = await db.get('SELECT * FROM teams WHERE id = $1', [team_id]);
     if (team) {
-      await db.run('DELETE FROM bids WHERE team_id = $1', [team_id]);
+      await db.run('DELETE FROM trades WHERE initiator_team_id = $1 OR target_team_id = $1', [team_id]);
       await db.run('DELETE FROM allocations WHERE team_id = $1', [team_id]);
-      await db.run('DELETE FROM scores WHERE team_id = $1', [team_id]);
+      await db.run('DELETE FROM bids WHERE team_id = $1', [team_id]);
       await db.run('DELETE FROM teams WHERE id = $1', [team_id]);
       await db.run('DELETE FROM users WHERE id = $1', [team.user_id]);
     }
@@ -250,10 +250,10 @@ router.post('/delete-company', catchAsync(async (req, res) => {
     for (let bid of bids) {
       await db.run('UPDATE teams SET purse_remaining = purse_remaining + $1 WHERE id = $2', [bid.bid_amount, bid.team_id]);
     }
+    await db.run('DELETE FROM trades WHERE target_company_id = $1 OR offered_company_id = $1', [company_id]);
     await db.run('DELETE FROM bids WHERE company_id = $1', [company_id]);
     await db.run('DELETE FROM allocations WHERE company_id = $1', [company_id]);
     await db.run('UPDATE system_control SET live_company_id = NULL WHERE live_company_id = $1', [company_id]);
-    await db.run('DELETE FROM company_results WHERE company_id = $1', [company_id]);
     await db.run('DELETE FROM companies WHERE id = $1', [company_id]);
     await db.exec('COMMIT');
     await logActivity('ADMIN', 'DELETE_COMPANY', `Deleted company ID=${company_id}. Refunded bids to teams.`);
